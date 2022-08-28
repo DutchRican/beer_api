@@ -6,64 +6,12 @@ import (
 	"log"
 	"os"
 
-	"github.com/georgysavva/scany/sqlscan"
+	. "github.com/dutchrican/beer_api/controllers"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/joho/godotenv"
-	"github.com/lib/pq"
 	_ "github.com/lib/pq"
 )
-
-type Beer struct {
-	ID             int     `json:"id"`
-	Beername       string  `db:"beer_name" json:"beer_name"`
-	Creator        string  `db:"creator" json:"creator"`
-	OriginCountry  string  `db:"origin_country" json:"origin_country"`
-	CurrentCountry string  `db:"current_country" json:"current_country"`
-	Alcohol        float32 `db:"alcohol" json:"alcohol"`
-}
-
-func indexHandler(c *fiber.Ctx, db *sql.DB) error {
-	var beers []Beer
-	err := sqlscan.Select(c.Context(), db, &beers, `SELECT * FROM public.beers`)
-
-	if err != nil {
-		log.Fatalln(err)
-		c.JSON("Error occurred")
-	}
-	return c.JSON(beers)
-}
-func postHandler(c *fiber.Ctx, db *sql.DB) error {
-	var b Beer
-	// var existingB Beer
-	if err := c.BodyParser(&b); err != nil {
-		return err
-	}
-	if len(b.Creator) == 0 || len(b.Beername) == 0 {
-		c.Context().SetStatusCode(fiber.StatusUnprocessableEntity)
-		return c.JSON(&fiber.Map{"error": "creator and beer_name must be provided"})
-	}
-	// err :=
-	stmt := `INSERT INTO public.beers (beer_name, creator, origin_country, current_country, alcohol) values ($1, $2, $3, $4, $5)`
-	_, err := db.Exec(stmt, b.Beername, b.Creator, b.OriginCountry, b.CurrentCountry, b.Alcohol)
-	if err != nil {
-		switch err.(*pq.Error).Code {
-		case "23502":
-			c.Context().SetStatusCode(fiber.StatusUnprocessableEntity)
-		default:
-			c.Context().SetStatusCode(fiber.StatusConflict)
-		}
-		return c.JSON(&fiber.Map{"error": err.(*pq.Error).Message})
-	}
-	c.Context().SetStatusCode(fiber.StatusCreated)
-	return c.JSON(b)
-}
-func putHandler(c *fiber.Ctx, db *sql.DB) error {
-	return c.SendString("Hi there!")
-}
-func deleteHandler(c *fiber.Ctx, db *sql.DB) error {
-	return c.SendString("Hi there!")
-}
 
 func getEnvVariables(key string) string {
 	err := godotenv.Load(".env")
@@ -103,16 +51,16 @@ func main() {
 	log.Println(res)
 
 	app.Get("/", func(c *fiber.Ctx) error {
-		return indexHandler(c, db)
+		return IndexHandler(c, db)
 	})
 	app.Post("/", func(c *fiber.Ctx) error {
-		return postHandler(c, db)
+		return PostHandler(c, db)
 	})
 	app.Put("/beer", func(c *fiber.Ctx) error {
-		return putHandler(c, db)
+		return PutHandler(c, db)
 	})
 	app.Delete("/beer", func(c *fiber.Ctx) error {
-		return deleteHandler(c, db)
+		return DeleteHandler(c, db)
 	})
 
 	log.Fatalln(app.Listen(fmt.Sprintf(":%v", port)))
