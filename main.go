@@ -1,12 +1,12 @@
 package main
 
 import (
-	"database/sql"
 	"fmt"
 	"log"
 	"os"
 
 	. "github.com/dutchrican/beer_api/controllers"
+	"github.com/dutchrican/beer_api/service"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/joho/godotenv"
@@ -23,32 +23,14 @@ func getEnvVariables(key string) string {
 }
 
 func main() {
+	port := getEnvVariables("PORT")
 	app := fiber.New()
 	app.Use(logger.New())
-	port := getEnvVariables("PORT")
-	username := getEnvVariables("USERNAME")
-	password := getEnvVariables("PASSWORD")
-	db_port := getEnvVariables("DB_PORT")
-	db_ip := getEnvVariables("DB_IP")
-	connStr := fmt.Sprintf("postgresql://%s:%s@%s:%s/beers?sslmode=disable", username, password, db_ip, db_port)
 
-	db, err := sql.Open("postgres", connStr)
-	if err != nil {
+	db := service.DB{}
+	if err := db.Open(dbOptions()); err != nil {
 		log.Fatal(err)
 	}
-
-	res, err := db.Exec(`CREATE TABLE IF NOT EXISTS beers (
-		id SERIAL PRIMARY KEY ,
-		beer_name TEXT NOT NULL UNIQUE,
-		creator TEXT NOT NULL,
-		origin_country TEXT,
-		current_country TEXT,
-		alcohol NUMERIC(4, 2)
-	 );`)
-	if err != nil {
-		log.Fatal(err)
-	}
-	log.Println(res)
 
 	app.Get("/", func(c *fiber.Ctx) error {
 		return IndexHandler(c, db)
@@ -64,4 +46,18 @@ func main() {
 	})
 
 	log.Fatalln(app.Listen(fmt.Sprintf(":%v", port)))
+}
+
+func dbOptions() service.ConnectionOptions {
+	username := getEnvVariables("USERNAME")
+	password := getEnvVariables("PASSWORD")
+	db_port := getEnvVariables("DB_PORT")
+	db_ip := getEnvVariables("DB_IP")
+
+	return service.ConnectionOptions{
+		Username: username,
+		Password: password,
+		DB_port:  db_port,
+		DP_Ip:    db_ip,
+	}
 }
