@@ -1,7 +1,6 @@
 package controllers
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/dutchrican/beer_api/models"
@@ -29,7 +28,6 @@ func PostHandler(c *gin.Context, db service.DB) {
 		return
 	}
 	if len(b.Creator) == 0 || len(b.Beername) == 0 {
-		fmt.Println("in here 1")
 		c.IndentedJSON(http.StatusUnprocessableEntity, gin.H{"error": "creator and beer_name must be provided"})
 		return
 	}
@@ -39,11 +37,9 @@ func PostHandler(c *gin.Context, db service.DB) {
 	if err != nil {
 		switch err.(*pq.Error).Code {
 		case "23502":
-			fmt.Println("in here 2")
 			c.IndentedJSON(http.StatusUnprocessableEntity, gin.H{"error": "Cannot process entity"})
 			return
 		default:
-			fmt.Println("in here 3")
 			c.IndentedJSON(http.StatusConflict, gin.H{"error": "duplicate entry"})
 			return
 		}
