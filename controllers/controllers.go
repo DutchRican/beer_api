@@ -1,34 +1,37 @@
 package controllers
 
 import (
-	"encoding/json"
-	"log"
+	"fmt"
+	"net/http"
 
-	. "github.com/dutchrican/beer_api/models"
+	"github.com/dutchrican/beer_api/models"
 	"github.com/dutchrican/beer_api/service"
 	"github.com/georgysavva/scany/sqlscan"
-	"github.com/gofiber/fiber/v2"
+	"github.com/gin-gonic/gin"
+	"github.com/imdario/mergo"
 	"github.com/lib/pq"
 )
 
-func IndexHandler(c *fiber.Ctx, db service.DB) error {
-	var beers []Beer
-	err := sqlscan.Select(c.Context(), db.Db, &beers, `SELECT * FROM public.beers`)
+func IndexHandler(c *gin.Context, db service.DB) {
+	var beers []models.Beer
+	err := sqlscan.Select(c, db.Db, &beers, `SELECT * FROM public.beers`)
 
 	if err != nil {
-		log.Fatalln(err)
-		c.JSON("Error occurred")
+		c.IndentedJSON(http.StatusInternalServerError, err)
 	}
-	return c.JSON(beers)
+	c.IndentedJSON(http.StatusOK, beers)
 }
-func PostHandler(c *fiber.Ctx, db service.DB) error {
-	var b Beer
-	if err := c.BodyParser(&b); err != nil {
-		return err
+
+func PostHandler(c *gin.Context, db service.DB) {
+	var b models.Beer
+	if err := c.BindJSON(&b); err != nil {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": err.(*pq.Error).Message})
+		return
 	}
 	if len(b.Creator) == 0 || len(b.Beername) == 0 {
-		c.Context().SetStatusCode(fiber.StatusUnprocessableEntity)
-		return c.JSON(&fiber.Map{"error": "creator and beer_name must be provided"})
+		fmt.Println("in here 1")
+		c.IndentedJSON(http.StatusUnprocessableEntity, gin.H{"error": "creator and beer_name must be provided"})
+		return
 	}
 	// err :=
 	stmt := `INSERT INTO public.beers (beer_name, creator, origin_country, current_country, alcohol) values ($1, $2, $3, $4, $5)`
@@ -36,63 +39,67 @@ func PostHandler(c *fiber.Ctx, db service.DB) error {
 	if err != nil {
 		switch err.(*pq.Error).Code {
 		case "23502":
-			c.Context().SetStatusCode(fiber.StatusUnprocessableEntity)
+			fmt.Println("in here 2")
+			c.IndentedJSON(http.StatusUnprocessableEntity, gin.H{"error": "Cannot process entity"})
+			return
 		default:
-			c.Context().SetStatusCode(fiber.StatusConflict)
+			fmt.Println("in here 3")
+			c.IndentedJSON(http.StatusConflict, gin.H{"error": "duplicate entry"})
+			return
 		}
-		return c.JSON(&fiber.Map{"error": err.(*pq.Error).Message})
 	}
-	c.Context().SetStatusCode(fiber.StatusCreated)
-	return c.JSON(b)
+	c.IndentedJSON(http.StatusCreated, &b)
 }
-func PutHandler(c *fiber.Ctx, db service.DB) error {
-	var b Beer
-	var oldBeer []Beer
-	if err := c.BodyParser(&b); err != nil {
-		return err
+
+func PutHandler(c *gin.Context, db service.DB) {
+	var b models.Beer
+	var oldBeer []models.Beer
+	if err := c.BindJSON(&b); err != nil {
+		return
 	}
-	err := sqlscan.Select(c.Context(), db.Db, &oldBeer, `SELECT * from public.beers WHERE id = $1;`, b.ID)
+	err := sqlscan.Select(c, db.Db, &oldBeer, `SELECT * from public.beers WHERE id = $1;`, b.ID)
 	if err != nil {
-		c.Context().SetStatusCode(fiber.StatusNotFound)
-		return c.JSON(&fiber.Map{"error": err.(*pq.Error).Message})
+		c.IndentedJSON(http.StatusNotFound, gin.H{"error": err.(*pq.Error).Message})
+		return
 	}
 
 	if len(oldBeer) == 0 {
-		c.Context().SetStatusCode(fiber.StatusNotFound)
-		return c.JSON(&fiber.Map{"error": "id not found"})
+		c.IndentedJSON(http.StatusNotFound, gin.H{"error": "id not found"})
+		return
+	}
+	err = mergo.Merge(&b, oldBeer[0], mergo.WithOverrideEmptySlice)
+	if err != nil {
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": err.(*pq.Error).Message})
 	}
 
-	err = json.Unmarshal(c.Body(), &oldBeer[0])
-	if err != nil {
-		return err
-	}
 	stmt := `
 	UPDATE public.beers 
 	SET beer_name = $1, creator = $2, origin_country = $3, current_country = $4, alcohol = $5
 	WHERE id = $6;
 	`
-	_, err = db.Db.Exec(stmt, oldBeer[0].Beername, oldBeer[0].Creator,
-		oldBeer[0].OriginCountry, oldBeer[0].CurrentCountry, oldBeer[0].Alcohol, oldBeer[0].ID)
+	_, err = db.Db.Exec(stmt, b.Beername, b.Creator,
+		b.OriginCountry, b.CurrentCountry, b.Alcohol, b.ID)
 	if err != nil {
-		return err
+		c.IndentedJSON(http.StatusInternalServerError, err)
+		return
 	}
 
-	return c.JSON(&oldBeer[0])
+	c.IndentedJSON(http.StatusOK, &b)
 }
-func DeleteHandler(c *fiber.Ctx, db service.DB) error {
-	var b Beer
-	if err := c.BodyParser(&b); err != nil {
-		return err
+func DeleteHandler(c *gin.Context, db service.DB) {
+	var b models.Beer
+	if err := c.BindJSON(&b); err != nil {
+		return
 	}
 	stmt := `DELETE from public.beers where id = $1;`
 	item, err := db.Db.Exec(stmt, b.ID)
 	if err != nil {
-		c.Context().SetStatusCode(fiber.StatusNotFound)
-		return c.JSON(&fiber.Map{"error": err.(*pq.Error).Message})
+		c.IndentedJSON(http.StatusNotFound, err)
+		return
 	}
 	if count, _ := item.RowsAffected(); count == 0 {
-		c.Context().SetStatusCode(fiber.StatusNotFound)
-		return c.JSON(&fiber.Map{"error": "no such ID"})
+		c.IndentedJSON(http.StatusNotFound, gin.H{"error": "no such ID"})
+		return
 	}
-	return c.JSON(&fiber.Map{"deleted": b.ID})
+	c.IndentedJSON(http.StatusOK, gin.H{"deleted": b.ID})
 }
