@@ -17,6 +17,7 @@ func IndexHandler(c *gin.Context, db service.DB) {
 
 	if err != nil {
 		c.IndentedJSON(http.StatusInternalServerError, err)
+		return
 	}
 	c.IndentedJSON(http.StatusOK, beers)
 }
@@ -66,6 +67,7 @@ func PutHandler(c *gin.Context, db service.DB) {
 	err = mergo.Merge(&b, oldBeer[0], mergo.WithOverrideEmptySlice)
 	if err != nil {
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": err.(*pq.Error).Message})
+		return
 	}
 
 	stmt := `

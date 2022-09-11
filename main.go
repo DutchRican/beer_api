@@ -45,7 +45,6 @@ func main() {
 	})
 
 	app.Run()
-	// log.Fatalln(app.Listen(fmt.Sprintf(":%v", port)))
 }
 
 func dbOptions() service.ConnectionOptions {

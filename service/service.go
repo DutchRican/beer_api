@@ -31,7 +31,10 @@ func (d *DB) Open(options ConnectionOptions) error {
 	if err != nil {
 		return err
 	}
-	pg.Exec(CreateSchema)
+	_, err = pg.Exec(CreateSchema)
+	if err != nil {
+		return err
+	}
 	d.Db = pg
 	return nil
 }
