@@ -30,17 +30,17 @@ func main() {
 	if err := db.Open(dbOptions()); err != nil {
 		log.Fatal(err)
 	}
-
-	app.GET("/", func(c *gin.Context) {
+	group := app.Group("/api/v1")
+	group.GET("/beers", func(c *gin.Context) {
 		IndexHandler(c, db)
 	})
-	app.POST("/", func(c *gin.Context) {
+	group.POST("/beer", func(c *gin.Context) {
 		PostHandler(c, db)
 	})
-	app.PUT("/beer", func(c *gin.Context) {
+	group.PUT("/beer", func(c *gin.Context) {
 		PutHandler(c, db)
 	})
-	app.DELETE("/beer", func(c *gin.Context) {
+	group.DELETE("/beer", func(c *gin.Context) {
 		DeleteHandler(c, db)
 	})
 
