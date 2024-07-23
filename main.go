@@ -4,7 +4,8 @@ import (
 	"log"
 	"os"
 
-	. "github.com/dutchrican/beer_api/controllers"
+	beers "github.com/dutchrican/beer_api/controllers/beer_controller"
+	country "github.com/dutchrican/beer_api/controllers/country_controller"
 	"github.com/dutchrican/beer_api/service"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
@@ -32,16 +33,23 @@ func main() {
 	}
 	group := app.Group("/api/v1")
 	group.GET("/beers", func(c *gin.Context) {
-		IndexHandler(c, db)
+		beers.IndexHandler(c, db)
 	})
 	group.POST("/beer", func(c *gin.Context) {
-		PostHandler(c, db)
+		beers.PostHandler(c, db)
 	})
 	group.PUT("/beer", func(c *gin.Context) {
-		PutHandler(c, db)
+		beers.PutHandler(c, db)
 	})
 	group.DELETE("/beer", func(c *gin.Context) {
-		DeleteHandler(c, db)
+		beers.DeleteHandler(c, db)
+	})
+
+	group.GET("/countries", func(c *gin.Context) {
+		country.IndexHandler(c, db)
+	})
+	group.POST("/country", func(c *gin.Context) {
+		country.PostHandler(c, db)
 	})
 
 	app.Run()

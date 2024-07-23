@@ -1,4 +1,4 @@
-package controllers
+package beer_controller
 
 import (
 	"net/http"
@@ -13,17 +13,29 @@ import (
 
 func IndexHandler(c *gin.Context, db service.DB) {
 	var beers []models.Beer
-	err := sqlscan.Select(c, db.Db, &beers, `SELECT * FROM public.beers`)
+	err := sqlscan.Select(c, db.Db, &beers, `SELECT
+    beers.id,
+    beers.beer_name,
+    beers.creator,
+    origin_countries.country_name AS origin_country,
+    current_countries.country_name AS current_country,
+    beers.alcohol
+	FROM
+		beers
+	JOIN
+    	countries AS origin_countries ON beers.origin_country_id = origin_countries.id
+	JOIN
+    	countries AS current_countries ON beers.current_country_id = current_countries.id;`)
 
 	if err != nil {
-		c.IndentedJSON(http.StatusInternalServerError, err)
+		c.IndentedJSON(http.StatusInternalServerError, err.(*pq.Error).Message)
 		return
 	}
 	c.IndentedJSON(http.StatusOK, beers)
 }
 
 func PostHandler(c *gin.Context, db service.DB) {
-	var b models.Beer
+	var b models.BeerDTO
 	if err := c.BindJSON(&b); err != nil {
 		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": err.(*pq.Error).Message})
 		return
@@ -33,15 +45,18 @@ func PostHandler(c *gin.Context, db service.DB) {
 		return
 	}
 	// err :=
-	stmt := `INSERT INTO public.beers (beer_name, creator, origin_country, current_country, alcohol) values ($1, $2, $3, $4, $5)`
-	_, err := db.Db.Exec(stmt, b.Beername, b.Creator, b.OriginCountry, b.CurrentCountry, b.Alcohol)
+	stmt := `INSERT INTO public.beers (beer_name, creator, origin_country_id, current_country_id, alcohol) values ($1, $2, $3, $4, $5)`
+	_, err := db.Db.Exec(stmt, b.Beername, b.Creator, b.OriginCountryId, b.CurrentCountryId, b.Alcohol)
 	if err != nil {
 		switch err.(*pq.Error).Code {
-		case "23502":
+		case "23502", "23503":
 			c.IndentedJSON(http.StatusUnprocessableEntity, gin.H{"error": "Cannot process entity"})
 			return
-		default:
+		case "23505":
 			c.IndentedJSON(http.StatusConflict, gin.H{"error": "duplicate entry"})
+			return
+		default:
+			c.IndentedJSON(http.StatusConflict, gin.H{"error": err.(*pq.Error).Code})
 			return
 		}
 	}
@@ -49,7 +64,7 @@ func PostHandler(c *gin.Context, db service.DB) {
 }
 
 func PutHandler(c *gin.Context, db service.DB) {
-	var b models.Beer
+	var b models.BeerDTO
 	var oldBeer []models.Beer
 	if err := c.BindJSON(&b); err != nil {
 		return
@@ -72,11 +87,11 @@ func PutHandler(c *gin.Context, db service.DB) {
 
 	stmt := `
 	UPDATE public.beers 
-	SET beer_name = $1, creator = $2, origin_country = $3, current_country = $4, alcohol = $5
+	SET beer_name = $1, creator = $2, origin_country_id = $3, current_country_id = $4, alcohol = $5
 	WHERE id = $6;
 	`
 	_, err = db.Db.Exec(stmt, b.Beername, b.Creator,
-		b.OriginCountry, b.CurrentCountry, b.Alcohol, b.ID)
+		b.OriginCountryId, b.CurrentCountryId, b.Alcohol, b.ID)
 	if err != nil {
 		c.IndentedJSON(http.StatusInternalServerError, err)
 		return
