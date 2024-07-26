@@ -31,6 +31,7 @@ func main() {
 	if err := db.Open(dbOptions()); err != nil {
 		log.Fatal(err)
 	}
+	defer db.Close()
 	group := app.Group("/api/v1")
 	group.GET("/beers", func(c *gin.Context) {
 		beers.IndexHandler(c, db)
@@ -59,12 +60,12 @@ func dbOptions() service.ConnectionOptions {
 	username := getEnvVariables("USERNAME")
 	password := getEnvVariables("PASSWORD")
 	db_port := getEnvVariables("DB_PORT")
-	db_ip := getEnvVariables("DB_IP")
 
 	return service.ConnectionOptions{
-		Username: username,
+		User:     username,
 		Password: password,
-		DB_port:  db_port,
-		DP_Ip:    db_ip,
+		Port:     db_port,
+		Host:     getEnvVariables("HOST"),
+		Dbname:   getEnvVariables("DB_NAME"),
 	}
 }

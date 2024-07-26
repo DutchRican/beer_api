@@ -1,0 +1,28 @@
+services:
+  beer_api:
+    build: .
+    env_file: 
+      - path: ./.env
+        required: true
+    ports:
+      - ${PORT}:${PORT}
+    volumes:
+      - .:/usr/src/app
+    command: air ./main.go -b 0.0.0.0
+
+  db:
+    image: postgres
+    restart: always
+    environment:
+      - DEBUG
+      - POSTGRES_USER=${USERNAME}
+      - POSTGRES_PASSWORD=${PASSWORD}
+      - POSTGRES_DB=${DB_NAME}
+    # user: postgres
+    ports:
+      - ${DB_PORT}:${DB_PORT}
+    volumes:
+      - beer-db:/var/lib/postgresql/data
+
+volumes:
+  beer-db:

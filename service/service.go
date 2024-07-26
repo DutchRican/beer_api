@@ -6,11 +6,11 @@ import (
 )
 
 type ConnectionOptions struct {
-	Port     string
-	Username string
+	Host     string
+	User     string
 	Password string
-	DB_port  string
-	DP_Ip    string
+	Port     string
+	Dbname   string
 }
 
 type DBConnection interface {
@@ -24,8 +24,8 @@ type DB struct {
 }
 
 func (d *DB) Open(options ConnectionOptions) error {
-	connStr := fmt.Sprintf("postgresql://%s:%s@%s:%s/beers?sslmode=disable",
-		options.Username, options.Password, options.DP_Ip, options.DB_port)
+	connStr := fmt.Sprintf("host=db port=%s user=%s password=%s dbname=%s sslmode=disable",
+		options.Port, options.User, options.Password, options.Dbname)
 
 	pg, err := sql.Open("postgres", connStr)
 	if err != nil {

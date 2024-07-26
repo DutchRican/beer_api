@@ -11,8 +11,8 @@ import (
 )
 
 func IndexHandler(c *gin.Context, db service.DB) {
-	var country []models.Country
-	err := sqlscan.Select(c, db.Db, &country, `SELECT * FROM public.countries`)
+	country := make([]models.Country, 0)
+	err := sqlscan.Select(c, db.Db, &country, `SELECT * FROM countries`)
 
 	if err != nil {
 		c.IndentedJSON(http.StatusInternalServerError, err)

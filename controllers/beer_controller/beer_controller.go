@@ -1,6 +1,7 @@
 package beer_controller
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/dutchrican/beer_api/models"
@@ -12,25 +13,26 @@ import (
 )
 
 func IndexHandler(c *gin.Context, db service.DB) {
-	var beers []models.Beer
+	beers := make([]models.Beer, 0)
 	err := sqlscan.Select(c, db.Db, &beers, `SELECT
-    beers.id,
-    beers.beer_name,
-    beers.creator,
-    origin_countries.country_name AS origin_country,
-    current_countries.country_name AS current_country,
-    beers.alcohol
-	FROM
-		beers
-	JOIN
-    	countries AS origin_countries ON beers.origin_country_id = origin_countries.id
-	JOIN
-    	countries AS current_countries ON beers.current_country_id = current_countries.id;`)
+    b.id,
+    b.beer_name,
+    b.creator,
+    oc.country_name AS origin_country,
+    cc.country_name AS current_country,
+    b.alcohol
+FROM
+    beers b
+JOIN
+    countries oc ON b.origin_country_id = oc.id
+JOIN
+    countries cc ON b.current_country_id = cc.id;`)
 
 	if err != nil {
 		c.IndentedJSON(http.StatusInternalServerError, err.(*pq.Error).Message)
 		return
 	}
+	fmt.Println(beers)
 	c.IndentedJSON(http.StatusOK, beers)
 }
 
@@ -44,6 +46,7 @@ func PostHandler(c *gin.Context, db service.DB) {
 		c.IndentedJSON(http.StatusUnprocessableEntity, gin.H{"error": "creator and beer_name must be provided"})
 		return
 	}
+	fmt.Println(b)
 	// err :=
 	stmt := `INSERT INTO public.beers (beer_name, creator, origin_country_id, current_country_id, alcohol) values ($1, $2, $3, $4, $5)`
 	_, err := db.Db.Exec(stmt, b.Beername, b.Creator, b.OriginCountryId, b.CurrentCountryId, b.Alcohol)
