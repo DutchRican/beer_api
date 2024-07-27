@@ -13,12 +13,6 @@ type ConnectionOptions struct {
 	Dbname   string
 }
 
-type DBConnection interface {
-	Open(options ConnectionOptions) error
-	Close() error
-	Instance() *sql.DB
-}
-
 type DB struct {
 	Db *sql.DB
 }

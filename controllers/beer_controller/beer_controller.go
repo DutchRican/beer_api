@@ -32,7 +32,6 @@ JOIN
 		c.IndentedJSON(http.StatusInternalServerError, err.(*pq.Error).Message)
 		return
 	}
-	fmt.Println(beers)
 	c.IndentedJSON(http.StatusOK, beers)
 }
 
